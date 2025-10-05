@@ -1,0 +1,1111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Teacher Attendance System</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.25/jspdf.plugin.autotable.min.js"></script>
+    <style>
+        /* ... (keep all the existing CSS styles exactly as they were) ... */
+        :root {
+            --primary: #2c3e50;
+            --secondary: #3498db;
+            --accent: #e74c3c;
+            --light: #ecf0f1;
+            --success: #2ecc71;
+            --warning: #f39c12;
+            --danger: #e74c3c;
+            --dark: #34495e;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            background-color: #f5f7fa;
+            color: #333;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+        
+        /* ... (all other CSS styles remain exactly the same) ... */
+    </style>
+</head>
+<body>
+    <!-- Notification System -->
+    <div id="notification" class="notification" style="display: none;"></div>
+
+    <!-- Data Sync Modal -->
+    <div id="syncModal" class="setup-wizard" style="display: none;">
+        <div class="wizard-card">
+            <h2>Sync Data</h2>
+            <p>Choose how you want to sync data between devices:</p>
+            
+            <div class="form-group">
+                <label for="syncOption">Sync Option</label>
+                <select id="syncOption" class="form-control">
+                    <option value="import">Import Data from File</option>
+                    <option value="export">Export Data to File</option>
+                    <option value="cloud">Use Cloud Sync (Manual)</option>
+                </select>
+            </div>
+            
+            <div id="importSection">
+                <div class="form-group">
+                    <label for="syncFile">Select Data File</label>
+                    <input type="file" id="syncFile" class="form-control" accept=".json">
+                </div>
+                <button class="btn btn-success" onclick="importSyncData()">Import Data</button>
+            </div>
+            
+            <div id="exportSection" style="display: none;">
+                <p>Download the data file and transfer it to other devices:</p>
+                <button class="btn btn-success" onclick="exportSyncData()">Export Data</button>
+            </div>
+            
+            <div id="cloudSection" style="display: none;">
+                <p>Manual cloud sync instructions:</p>
+                <ol style="text-align: left; margin: 15px 0;">
+                    <li>Export data from your main device</li>
+                    <li>Transfer the file to this device (email, cloud storage, etc.)</li>
+                    <li>Import the file on this device</li>
+                </ol>
+                <button class="btn" onclick="closeSyncModal()">Close</button>
+            </div>
+            
+            <button class="btn btn-warning" onclick="closeSyncModal()" style="margin-top: 15px;">Cancel</button>
+        </div>
+    </div>
+
+    <!-- Setup Wizard for First Time Users -->
+    <div id="setupWizard" class="setup-wizard" style="display: none;">
+        <div class="wizard-card">
+            <h2>Welcome to Teacher Attendance System</h2>
+            <p>It looks like this is your first time using the system. Let's set up an admin account to get started.</p>
+            <div class="form-group">
+                <label for="setupAdminEmail">Admin Email</label>
+                <input type="email" id="setupAdminEmail" class="form-control" value="admin@school.edu">
+            </div>
+            <div class="form-group">
+                <label for="setupAdminPassword">Admin Password</label>
+                <input type="password" id="setupAdminPassword" class="form-control" value="admin123">
+            </div>
+            <button class="btn btn-success" onclick="completeSetup()">Complete Setup</button>
+            
+            <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid #eee;">
+                <p>Already have data from another device?</p>
+                <button class="btn" onclick="showSyncModal()">Sync Data from Other Device</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Login Page -->
+    <div class="login-container" id="loginPage">
+        <div class="login-card">
+            <div class="login-header">
+                <h1>Teacher Attendance</h1>
+                <p>Sign in to your account</p>
+            </div>
+            
+            <div class="role-selector">
+                <div class="role-option active" data-role="teacher">Teacher</div>
+                <div class="role-option" data-role="admin">Administrator</div>
+            </div>
+            
+            <form id="loginForm">
+                <div class="form-group">
+                    <label for="email">Email</label>
+                    <input type="email" id="email" class="form-control" placeholder="Enter your email" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="password">Password</label>
+                    <input type="password" id="password" class="form-control" placeholder="Enter your password" required>
+                </div>
+                
+                <button type="submit" class="btn">Sign In</button>
+            </form>
+            
+            <div style="margin-top: 20px; text-align: center;">
+                <p style="margin-bottom: 10px;">Need to sync data between devices?</p>
+                <button class="btn btn-sm" onclick="showSyncModal()">Sync Data</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Teacher Dashboard -->
+    <div class="dashboard" id="teacherDashboard">
+        <!-- ... (keep all existing teacher dashboard HTML exactly as it was) ... -->
+    </div>
+    
+    <!-- Admin Dashboard -->
+    <div class="dashboard" id="adminDashboard">
+        <!-- ... (keep all existing admin dashboard HTML exactly as it was) ... -->
+    </div>
+
+    <script>
+        // Data Storage Keys
+        const STORAGE_KEYS = {
+            TEACHERS: 'teacher_attendance_teachers',
+            ATTENDANCE: 'teacher_attendance_records',
+            LESSON_NOTES: 'teacher_lesson_notes',
+            ASSIGNMENTS: 'teacher_assignments',
+            SETTINGS: 'teacher_attendance_settings',
+            IS_SETUP: 'teacher_attendance_is_setup',
+            LAST_SYNC: 'teacher_attendance_last_sync'
+        };
+
+        // Initialize empty data arrays - NO HARDCODED SAMPLE DATA
+        let sampleTeachers = [];
+        let sampleAttendance = [];
+        let sampleLessonNotes = [];
+        let sampleAssignments = [];
+        let systemSettings = {
+            attendanceStart: "08:00",
+            attendanceEnd: "09:00"
+        };
+
+        // Load data from localStorage
+        function loadDataFromStorage() {
+            const storedTeachers = localStorage.getItem(STORAGE_KEYS.TEACHERS);
+            const storedAttendance = localStorage.getItem(STORAGE_KEYS.ATTENDANCE);
+            const storedLessonNotes = localStorage.getItem(STORAGE_KEYS.LESSON_NOTES);
+            const storedAssignments = localStorage.getItem(STORAGE_KEYS.ASSIGNMENTS);
+            const storedSettings = localStorage.getItem(STORAGE_KEYS.SETTINGS);
+            
+            sampleTeachers = storedTeachers ? JSON.parse(storedTeachers) : [];
+            sampleAttendance = storedAttendance ? JSON.parse(storedAttendance) : [];
+            sampleLessonNotes = storedLessonNotes ? JSON.parse(storedLessonNotes) : [];
+            sampleAssignments = storedAssignments ? JSON.parse(storedAssignments) : [];
+            systemSettings = storedSettings ? JSON.parse(storedSettings) : {
+                attendanceStart: "08:00",
+                attendanceEnd: "09:00"
+            };
+        }
+
+        // Save data to localStorage
+        function saveDataToStorage() {
+            localStorage.setItem(STORAGE_KEYS.TEACHERS, JSON.stringify(sampleTeachers));
+            localStorage.setItem(STORAGE_KEYS.ATTENDANCE, JSON.stringify(sampleAttendance));
+            localStorage.setItem(STORAGE_KEYS.LESSON_NOTES, JSON.stringify(sampleLessonNotes));
+            localStorage.setItem(STORAGE_KEYS.ASSIGNMENTS, JSON.stringify(sampleAssignments));
+            localStorage.setItem(STORAGE_KEYS.SETTINGS, JSON.stringify(systemSettings));
+            localStorage.setItem(STORAGE_KEYS.LAST_SYNC, new Date().toISOString());
+        }
+
+        // Check if system is setup
+        function isSystemSetup() {
+            return localStorage.getItem(STORAGE_KEYS.IS_SETUP) === 'true';
+        }
+
+        // Mark system as setup
+        function markSystemAsSetup() {
+            localStorage.setItem(STORAGE_KEYS.IS_SETUP, 'true');
+        }
+
+        // Show sync modal
+        function showSyncModal() {
+            document.getElementById('syncModal').style.display = 'flex';
+            updateSyncModalSections();
+        }
+
+        // Close sync modal
+        function closeSyncModal() {
+            document.getElementById('syncModal').style.display = 'none';
+        }
+
+        // Update sync modal sections based on selection
+        function updateSyncModalSections() {
+            const syncOption = document.getElementById('syncOption').value;
+            document.getElementById('importSection').style.display = syncOption === 'import' ? 'block' : 'none';
+            document.getElementById('exportSection').style.display = syncOption === 'export' ? 'block' : 'none';
+            document.getElementById('cloudSection').style.display = syncOption === 'cloud' ? 'block' : 'none';
+        }
+
+        // Import sync data
+        function importSyncData() {
+            const fileInput = document.getElementById('syncFile');
+            const file = fileInput.files[0];
+            
+            if (!file) {
+                showNotification('Please select a data file to import', 'error');
+                return;
+            }
+            
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const importedData = JSON.parse(e.target.result);
+                    
+                    // Validate the imported data structure
+                    if (!importedData.teachers || !Array.isArray(importedData.teachers)) {
+                        throw new Error('Invalid data format: teachers array missing');
+                    }
+                    
+                    // Replace all data with imported data
+                    if (importedData.teachers) sampleTeachers = importedData.teachers;
+                    if (importedData.attendance) sampleAttendance = importedData.attendance;
+                    if (importedData.lessonNotes) sampleLessonNotes = importedData.lessonNotes;
+                    if (importedData.assignments) sampleAssignments = importedData.assignments;
+                    if (importedData.settings) systemSettings = importedData.settings;
+                    
+                    saveDataToStorage();
+                    markSystemAsSetup();
+                    closeSyncModal();
+                    
+                    showNotification('Data imported successfully! System is now ready.');
+                    
+                    // If we're on the login page, refresh the setup check
+                    if (document.getElementById('loginPage').style.display !== 'none') {
+                        checkSystemSetup();
+                    }
+                    
+                } catch (error) {
+                    showNotification('Error importing data: ' + error.message, 'error');
+                    console.error('Import error:', error);
+                }
+            };
+            reader.readAsText(file);
+        }
+
+        // Export sync data
+        function exportSyncData() {
+            const allData = {
+                teachers: sampleTeachers,
+                attendance: sampleAttendance,
+                lessonNotes: sampleLessonNotes,
+                assignments: sampleAssignments,
+                settings: systemSettings,
+                exportedAt: new Date().toISOString(),
+                version: '1.0'
+            };
+            
+            const dataStr = JSON.stringify(allData, null, 2);
+            const dataBlob = new Blob([dataStr], {type: 'application/json'});
+            
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(dataBlob);
+            link.download = `teacher_attendance_data_${new Date().toISOString().split('T')[0]}.json`;
+            link.click();
+            
+            showNotification('Data exported successfully! Transfer this file to other devices.');
+        }
+
+        // Complete setup wizard
+        function completeSetup() {
+            const adminEmail = document.getElementById('setupAdminEmail').value;
+            const adminPassword = document.getElementById('setupAdminPassword').value;
+            
+            if (!adminEmail || !adminPassword) {
+                showNotification('Please fill all fields', 'error');
+                return;
+            }
+            
+            // Create admin account
+            const adminTeacher = {
+                id: 1,
+                name: "Administrator",
+                username: "admin",
+                email: adminEmail,
+                password: adminPassword,
+                department: "Administration",
+                phone: "+1 (555) 000-0000",
+                isAdmin: true
+            };
+            
+            sampleTeachers.push(adminTeacher);
+            saveDataToStorage();
+            markSystemAsSetup();
+            
+            document.getElementById('setupWizard').style.display = 'none';
+            showNotification('System setup completed! You can now login as admin.');
+        }
+
+        // Reset system to factory settings
+        function resetSystem() {
+            if (confirm('Are you sure you want to reset the system? This will delete all data and cannot be undone.')) {
+                localStorage.removeItem(STORAGE_KEYS.TEACHERS);
+                localStorage.removeItem(STORAGE_KEYS.ATTENDANCE);
+                localStorage.removeItem(STORAGE_KEYS.LESSON_NOTES);
+                localStorage.removeItem(STORAGE_KEYS.ASSIGNMENTS);
+                localStorage.removeItem(STORAGE_KEYS.SETTINGS);
+                localStorage.removeItem(STORAGE_KEYS.IS_SETUP);
+                localStorage.removeItem(STORAGE_KEYS.LAST_SYNC);
+                
+                // Reload the page
+                location.reload();
+            }
+        }
+
+        // Check system setup and show appropriate screen
+        function checkSystemSetup() {
+            if (!isSystemSetup()) {
+                document.getElementById('setupWizard').style.display = 'flex';
+                document.getElementById('loginPage').style.display = 'none';
+            } else {
+                document.getElementById('setupWizard').style.display = 'none';
+                document.getElementById('loginPage').style.display = 'flex';
+            }
+        }
+
+        // DOM Elements
+        const loginPage = document.getElementById('loginPage');
+        const teacherDashboard = document.getElementById('teacherDashboard');
+        const adminDashboard = document.getElementById('adminDashboard');
+        const setupWizard = document.getElementById('setupWizard');
+        const syncModal = document.getElementById('syncModal');
+        const roleOptions = document.querySelectorAll('.role-option');
+        const loginForm = document.getElementById('loginForm');
+        const syncOption = document.getElementById('syncOption');
+        
+        // Current user state
+        let currentUser = null;
+        let currentRole = 'teacher';
+        
+        // Initialize the application
+        document.addEventListener('DOMContentLoaded', function() {
+            // Load data from storage
+            loadDataFromStorage();
+            
+            // Set up sync option change listener
+            if (syncOption) {
+                syncOption.addEventListener('change', updateSyncModalSections);
+            }
+            
+            // Check system setup
+            checkSystemSetup();
+            
+            // Set up role selector
+            roleOptions.forEach(option => {
+                option.addEventListener('click', function() {
+                    roleOptions.forEach(opt => opt.classList.remove('active'));
+                    this.classList.add('active');
+                    currentRole = this.getAttribute('data-role');
+                });
+            });
+            
+            // Set up menu navigation
+            setupMenuNavigation();
+            
+            // Set up login form
+            loginForm.addEventListener('submit', function(e) {
+                e.preventDefault();
+                login();
+            });
+            
+            // Initialize charts
+            initializeCharts();
+        });
+        
+        // Setup menu navigation
+        function setupMenuNavigation() {
+            const menuItems = document.querySelectorAll('.menu-item');
+            menuItems.forEach(item => {
+                item.addEventListener('click', function() {
+                    const pageId = this.getAttribute('data-page');
+                    
+                    // Update active menu item
+                    const currentDashboard = currentRole === 'teacher' ? teacherDashboard : adminDashboard;
+                    const menuItemsInDashboard = currentDashboard.querySelectorAll('.menu-item');
+                    menuItemsInDashboard.forEach(i => i.classList.remove('active'));
+                    this.classList.add('active');
+                    
+                    // Show the selected page
+                    const pagesInDashboard = currentDashboard.querySelectorAll('.page');
+                    pagesInDashboard.forEach(page => page.style.display = 'none');
+                    
+                    if (currentRole === 'teacher') {
+                        document.getElementById(`teacher${capitalizeFirstLetter(pageId)}Page`).style.display = 'block';
+                        
+                        // Load specific data for teacher pages
+                        if (pageId === 'profile') {
+                            loadTeacherProfile();
+                        } else if (pageId === 'attendance') {
+                            loadTeacherAttendanceHistory();
+                        } else if (pageId === 'lessons') {
+                            loadTeacherLessonNotes();
+                        } else if (pageId === 'assignments') {
+                            loadTeacherAssignments();
+                        } else if (pageId === 'dashboard') {
+                            updateTeacherDashboardStats();
+                        }
+                    } else {
+                        document.getElementById(`admin${capitalizeFirstLetter(pageId)}Page`).style.display = 'block';
+                        
+                        // Load specific data for admin pages
+                        if (pageId === 'teachers') {
+                            loadTeachersList();
+                            populateTeacherDropdowns();
+                        } else if (pageId === 'attendance') {
+                            loadAllAttendance();
+                        } else if (pageId === 'lessons') {
+                            loadAdminLessonNotes();
+                        } else if (pageId === 'assignments') {
+                            loadAdminAssignments();
+                        } else if (pageId === 'dashboard') {
+                            updateAdminDashboardStats();
+                        } else if (pageId === 'settings') {
+                            // Add sync button to settings page
+                            addSyncToSettings();
+                        }
+                    }
+                });
+            });
+        }
+
+        // Add sync functionality to settings page
+        function addSyncToSettings() {
+            const settingsPage = document.getElementById('adminSettingsPage');
+            if (!settingsPage) return;
+            
+            // Check if sync section already exists
+            if (!document.getElementById('syncSection')) {
+                const syncSection = document.createElement('div');
+                syncSection.className = 'form-card';
+                syncSection.id = 'syncSection';
+                syncSection.innerHTML = `
+                    <h3 style="margin-bottom: 15px;">Data Sync Between Devices</h3>
+                    <div class="form-group">
+                        <p>Sync your data across multiple devices:</p>
+                        <button class="btn btn-success" onclick="showSyncModal()">Sync Data</button>
+                    </div>
+                    <div class="form-group">
+                        <p><strong>How to sync:</strong></p>
+                        <ol style="text-align: left; margin: 15px 0;">
+                            <li>Click "Sync Data" button</li>
+                            <li>Choose "Export Data to File" on your main device</li>
+                            <li>Transfer the file to your other device (email, cloud storage, etc.)</li>
+                            <li>On the other device, choose "Import Data from File" and select the file</li>
+                        </ol>
+                    </div>
+                    ${localStorage.getItem(STORAGE_KEYS.LAST_SYNC) ? `
+                    <div class="form-group">
+                        <p><strong>Last Sync:</strong> ${new Date(localStorage.getItem(STORAGE_KEYS.LAST_SYNC)).toLocaleString()}</p>
+                    </div>
+                    ` : ''}
+                `;
+                
+                // Insert sync section before the reset section
+                const resetSection = settingsPage.querySelector('.form-card:last-child');
+                if (resetSection) {
+                    settingsPage.insertBefore(syncSection, resetSection);
+                } else {
+                    settingsPage.appendChild(syncSection);
+                }
+            }
+        }
+        
+        // Helper function to capitalize first letter
+        function capitalizeFirstLetter(string) {
+            return string.charAt(0).toUpperCase() + string.slice(1);
+        }
+        
+        // Show notification
+        function showNotification(message, type = 'success') {
+            const notification = document.getElementById('notification');
+            notification.textContent = message;
+            notification.className = `notification ${type}`;
+            notification.style.display = 'block';
+            
+            setTimeout(() => {
+                notification.classList.add('show');
+            }, 100);
+            
+            setTimeout(() => {
+                notification.classList.remove('show');
+                setTimeout(() => {
+                    notification.style.display = 'none';
+                }, 300);
+            }, 3000);
+        }
+        
+        // Login function - FIXED: Now works with synced data
+        function login() {
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            
+            // Simple validation
+            if (!email || !password) {
+                showNotification('Please enter both email and password', 'error');
+                return;
+            }
+            
+            if (currentRole === 'teacher') {
+                // Find teacher by email and password
+                const teacher = sampleTeachers.find(t => t.email === email && t.password === password);
+                if (teacher) {
+                    currentUser = teacher;
+                    loginPage.style.display = 'none';
+                    teacherDashboard.style.display = 'block';
+                    
+                    // Update UI with teacher info
+                    document.getElementById('teacherAvatar').textContent = 
+                        teacher.name.split(' ').map(n => n[0]).join('');
+                    document.getElementById('teacherNameDisplay').textContent = teacher.name;
+                    
+                    // Load initial data
+                    updateTeacherDashboardStats();
+                    loadTeacherAttendanceHistory();
+                    
+                    showNotification(`Welcome back, ${teacher.name}!`);
+                } else {
+                    showNotification('Invalid email or password. Make sure you have synced data from your main device.', 'error');
+                }
+            } else {
+                // Admin login - find admin user
+                const admin = sampleTeachers.find(t => t.email === email && t.password === password && t.isAdmin);
+                if (admin) {
+                    currentUser = admin;
+                    loginPage.style.display = 'none';
+                    adminDashboard.style.display = 'block';
+                    
+                    // Load initial data
+                    updateAdminDashboardStats();
+                    loadTeachersList();
+                    populateTeacherDropdowns();
+                    
+                    showNotification('Welcome back, Administrator!');
+                } else {
+                    showNotification('Invalid email or password. Make sure you have synced data from your main device.', 'error');
+                }
+            }
+        }
+        
+        // ... (keep all other existing functions exactly as they were - loadTeacherProfile, updateTeacherProfile, etc.) ...
+        // Logout function
+        function logout() {
+            currentUser = null;
+            teacherDashboard.style.display = 'none';
+            adminDashboard.style.display = 'none';
+            loginPage.style.display = 'flex';
+            
+            // Reset form
+            loginForm.reset();
+            
+            showNotification('You have been logged out successfully');
+        }
+        
+        // Load system settings
+        function loadSystemSettings() {
+            document.getElementById('attendanceStart').value = systemSettings.attendanceStart;
+            document.getElementById('attendanceEnd').value = systemSettings.attendanceEnd;
+        }
+        
+        // Save system settings
+        function saveSystemSettings() {
+            systemSettings.attendanceStart = document.getElementById('attendanceStart').value;
+            systemSettings.attendanceEnd = document.getElementById('attendanceEnd').value;
+            
+            saveDataToStorage();
+            showNotification('System settings saved successfully');
+        }
+        
+        // Load teacher profile
+        function loadTeacherProfile() {
+            if (!currentUser) return;
+            
+            document.getElementById('teacherName').value = currentUser.name;
+            document.getElementById('teacherEmail').value = currentUser.email;
+            document.getElementById('teacherPhone').value = currentUser.phone;
+            document.getElementById('teacherDepartment').value = currentUser.department;
+            document.getElementById('teacherUsername').value = currentUser.username;
+            document.getElementById('teacherPassword').value = '';
+        }
+        
+        // Update teacher profile
+        function updateTeacherProfile() {
+            if (!currentUser) return;
+            
+            const name = document.getElementById('teacherName').value;
+            const email = document.getElementById('teacherEmail').value;
+            const phone = document.getElementById('teacherPhone').value;
+            const department = document.getElementById('teacherDepartment').value;
+            const password = document.getElementById('teacherPassword').value;
+            
+            if (!name || !email || !phone || !department) {
+                showNotification('Please fill all required fields', 'error');
+                return;
+            }
+            
+            // Update teacher data
+            const teacherIndex = sampleTeachers.findIndex(t => t.id === currentUser.id);
+            if (teacherIndex !== -1) {
+                sampleTeachers[teacherIndex].name = name;
+                sampleTeachers[teacherIndex].email = email;
+                sampleTeachers[teacherIndex].phone = phone;
+                sampleTeachers[teacherIndex].department = department;
+                
+                // Update password if provided
+                if (password) {
+                    sampleTeachers[teacherIndex].password = password;
+                }
+                
+                // Update current user
+                currentUser = sampleTeachers[teacherIndex];
+                
+                // Update UI
+                document.getElementById('teacherNameDisplay').textContent = name;
+                document.getElementById('teacherAvatar').textContent = 
+                    name.split(' ').map(n => n[0]).join('');
+                
+                saveDataToStorage();
+                showNotification('Profile updated successfully');
+            }
+        }
+        
+        // Update teacher dashboard statistics
+        function updateTeacherDashboardStats() {
+            if (!currentUser) return;
+            
+            const teacherAttendance = sampleAttendance.filter(a => a.teacherId === currentUser.id);
+            const presentDays = teacherAttendance.filter(a => a.status === 'present').length;
+            const absentDays = teacherAttendance.filter(a => a.status === 'absent').length;
+            const lateDays = teacherAttendance.filter(a => a.status === 'late').length;
+            const totalDays = teacherAttendance.length;
+            const attendanceRate = totalDays > 0 ? Math.round((presentDays / totalDays) * 100) : 0;
+            
+            document.getElementById('presentDays').textContent = presentDays;
+            document.getElementById('absentDays').textContent = absentDays;
+            document.getElementById('lateDays').textContent = lateDays;
+            document.getElementById('attendanceRate').textContent = `${attendanceRate}%`;
+        }
+        
+        // Update admin dashboard statistics
+        function updateAdminDashboardStats() {
+            const today = new Date().toISOString().split('T')[0];
+            const todayRecords = sampleAttendance.filter(a => a.date === today);
+            
+            document.getElementById('totalTeachers').textContent = sampleTeachers.length;
+            document.getElementById('presentToday').textContent = todayRecords.filter(a => a.status === 'present').length;
+            document.getElementById('absentToday').textContent = todayRecords.filter(a => a.status === 'absent').length;
+            document.getElementById('lateToday').textContent = todayRecords.filter(a => a.status === 'late').length;
+            
+            // Update today's attendance table
+            loadTodayAttendance();
+        }
+        
+        // Load today's attendance for admin
+        function loadTodayAttendance() {
+            const tbody = document.getElementById('todayAttendance');
+            if (!tbody) return;
+            
+            tbody.innerHTML = '';
+            
+            const today = new Date().toISOString().split('T')[0];
+            const todayRecords = sampleAttendance.filter(a => a.date === today);
+            
+            if (todayRecords.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="5" style="text-align: center;">No attendance records for today</td></tr>';
+                return;
+            }
+            
+            todayRecords.forEach(record => {
+                const teacher = sampleTeachers.find(t => t.id === record.teacherId);
+                if (!teacher) return;
+                
+                const row = document.createElement('tr');
+                
+                row.innerHTML = `
+                    <td>${teacher.name}</td>
+                    <td>${teacher.department}</td>
+                    <td>${record.checkIn || '-'}</td>
+                    <td><span class="status-badge status-${record.status}">${record.status.toUpperCase()}</span></td>
+                    <td>
+                        <button class="btn btn-sm" onclick="editAttendance(${record.id})">Edit</button>
+                    </td>
+                `;
+                
+                tbody.appendChild(row);
+            });
+        }
+        
+        // Load teacher attendance history
+        function loadTeacherAttendanceHistory() {
+            if (!currentUser) return;
+            
+            const tbody = document.getElementById('attendanceHistory');
+            if (!tbody) return;
+            
+            tbody.innerHTML = '';
+            
+            const teacherAttendance = sampleAttendance.filter(a => a.teacherId === currentUser.id);
+            
+            if (teacherAttendance.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="5" style="text-align: center;">No attendance records found</td></tr>';
+                return;
+            }
+            
+            teacherAttendance.forEach(record => {
+                const row = document.createElement('tr');
+                
+                row.innerHTML = `
+                    <td>${record.date}</td>
+                    <td>${record.checkIn || '-'}</td>
+                    <td>${record.checkOut || '-'}</td>
+                    <td><span class="status-badge status-${record.status}">${record.status.toUpperCase()}</span></td>
+                    <td>${record.location || '-'}</td>
+                `;
+                
+                tbody.appendChild(row);
+            });
+        }
+        
+        // Load all attendance for admin
+        function loadAllAttendance() {
+            const tbody = document.getElementById('allAttendance');
+            if (!tbody) return;
+            
+            tbody.innerHTML = '';
+            
+            if (sampleAttendance.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="7" style="text-align: center;">No attendance records found</td></tr>';
+                return;
+            }
+            
+            sampleAttendance.forEach(record => {
+                const teacher = sampleTeachers.find(t => t.id === record.teacherId);
+                if (!teacher) return;
+                
+                const row = document.createElement('tr');
+                
+                row.innerHTML = `
+                    <td>${teacher.name}</td>
+                    <td>${teacher.department}</td>
+                    <td>${record.date}</td>
+                    <td>${record.checkIn || '-'}</td>
+                    <td>${record.checkOut || '-'}</td>
+                    <td><span class="status-badge status-${record.status}">${record.status.toUpperCase()}</span></td>
+                    <td>
+                        <button class="btn btn-sm" onclick="editAttendance(${record.id})">Edit</button>
+                        <button class="btn btn-sm btn-danger" onclick="deleteAttendance(${record.id})">Delete</button>
+                    </td>
+                `;
+                
+                tbody.appendChild(row);
+            });
+        }
+        
+        // Load teachers list for admin
+        function loadTeachersList() {
+            const tbody = document.getElementById('teachersList');
+            if (!tbody) return;
+            
+            tbody.innerHTML = '';
+            
+            if (sampleTeachers.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="5" style="text-align: center;">No teachers found</td></tr>';
+                return;
+            }
+            
+            sampleTeachers.forEach(teacher => {
+                const row = document.createElement('tr');
+                
+                row.innerHTML = `
+                    <td>${teacher.name}</td>
+                    <td>${teacher.username}</td>
+                    <td>${teacher.email}</td>
+                    <td>${teacher.department}</td>
+                    <td>
+                        <button class="btn btn-sm" onclick="editTeacher(${teacher.id})">Edit</button>
+                        <button class="btn btn-sm btn-danger" onclick="deleteTeacher(${teacher.id})">Delete</button>
+                    </td>
+                `;
+                
+                tbody.appendChild(row);
+            });
+        }
+        
+        // Populate teacher dropdowns
+        function populateTeacherDropdowns() {
+            const dropdowns = [
+                'attendanceTeacher',
+                'filterLessonTeacher',
+                'filterAssignmentTeacher'
+            ];
+            
+            dropdowns.forEach(dropdownId => {
+                const dropdown = document.getElementById(dropdownId);
+                if (dropdown) {
+                    // Clear existing options except the first one
+                    while (dropdown.options.length > 1) {
+                        dropdown.remove(1);
+                    }
+                    
+                    // Add teacher options
+                    sampleTeachers.forEach(teacher => {
+                        const option = document.createElement('option');
+                        option.value = teacher.id;
+                        option.textContent = teacher.name;
+                        dropdown.appendChild(option);
+                    });
+                }
+            });
+        }
+        
+        // Add teacher function
+        function addTeacher() {
+            const name = document.getElementById('newTeacherName').value;
+            const username = document.getElementById('newTeacherUsername').value;
+            const email = document.getElementById('newTeacherEmail').value;
+            const password = document.getElementById('newTeacherPassword').value;
+            const department = document.getElementById('newTeacherDepartment').value;
+            const phone = document.getElementById('newTeacherPhone').value;
+            
+            if (!name || !username || !email || !password || !department || !phone) {
+                showNotification('Please fill all fields', 'error');
+                return;
+            }
+            
+            // Check if username already exists
+            const usernameExists = sampleTeachers.some(t => t.username.toLowerCase() === username.toLowerCase());
+            if (usernameExists) {
+                showNotification('Username already exists', 'error');
+                return;
+            }
+            
+            // Check if email already exists
+            const emailExists = sampleTeachers.some(t => t.email.toLowerCase() === email.toLowerCase());
+            if (emailExists) {
+                showNotification('Email already exists', 'error');
+                return;
+            }
+            
+            // Create new teacher
+            const newTeacher = {
+                id: sampleTeachers.length > 0 ? Math.max(...sampleTeachers.map(t => t.id)) + 1 : 1,
+                name,
+                username,
+                email,
+                password,
+                department,
+                phone
+            };
+            
+            sampleTeachers.push(newTeacher);
+            
+            // Refresh the list and dropdowns
+            loadTeachersList();
+            populateTeacherDropdowns();
+            updateAdminDashboardStats();
+            
+            // Clear the form
+            document.getElementById('newTeacherName').value = '';
+            document.getElementById('newTeacherUsername').value = '';
+            document.getElementById('newTeacherEmail').value = '';
+            document.getElementById('newTeacherPassword').value = '';
+            document.getElementById('newTeacherDepartment').value = '';
+            document.getElementById('newTeacherPhone').value = '';
+            
+            saveDataToStorage();
+            showNotification('Teacher added successfully!');
+        }
+        
+        // ... (keep all other functions exactly as they were - editTeacher, deleteTeacher, markAttendanceAdmin, etc.) ...
+        // Edit teacher function
+        function editTeacher(teacherId) {
+            const teacher = sampleTeachers.find(t => t.id === teacherId);
+            if (teacher) {
+                const newName = prompt('Enter new name:', teacher.name);
+                if (newName) {
+                    teacher.name = newName;
+                    loadTeachersList();
+                    populateTeacherDropdowns();
+                    saveDataToStorage();
+                    showNotification('Teacher updated successfully');
+                }
+            }
+        }
+        
+        // Delete teacher function
+        function deleteTeacher(teacherId) {
+            if (confirm('Are you sure you want to delete this teacher?')) {
+                const index = sampleTeachers.findIndex(t => t.id === teacherId);
+                if (index !== -1) {
+                    sampleTeachers.splice(index, 1);
+                    loadTeachersList();
+                    populateTeacherDropdowns();
+                    updateAdminDashboardStats();
+                    saveDataToStorage();
+                    showNotification('Teacher deleted successfully!');
+                }
+            }
+        }
+        
+        // Mark attendance by admin
+        function markAttendanceAdmin() {
+            const teacherId = document.getElementById('attendanceTeacher').value;
+            const date = document.getElementById('attendanceDate').value;
+            
+            if (!teacherId || !date) {
+                showNotification('Please select both teacher and date', 'error');
+                return;
+            }
+            
+            // Check if attendance already exists for this teacher and date
+            const existingRecord = sampleAttendance.find(a => 
+                a.teacherId == teacherId && a.date === date
+            );
+            
+            if (existingRecord) {
+                showNotification('Attendance already exists for this teacher on the selected date', 'error');
+                return;
+            }
+            
+            // Create new attendance record
+            const newAttendance = {
+                id: sampleAttendance.length > 0 ? Math.max(...sampleAttendance.map(a => a.id)) + 1 : 1,
+                teacherId: parseInt(teacherId),
+                date,
+                checkIn: "08:00",
+                checkOut: "16:00",
+                status: "present",
+                location: "School Campus"
+            };
+            
+            sampleAttendance.push(newAttendance);
+            
+            // Refresh attendance lists
+            loadTodayAttendance();
+            loadAllAttendance();
+            updateAdminDashboardStats();
+            
+            saveDataToStorage();
+            showNotification('Attendance marked successfully!');
+        }
+        
+        // Edit attendance function
+        function editAttendance(attendanceId) {
+            const attendance = sampleAttendance.find(a => a.id === attendanceId);
+            if (attendance) {
+                const newStatus = prompt('Enter new status (present/late/absent):', attendance.status);
+                if (newStatus && ['present', 'late', 'absent'].includes(newStatus)) {
+                    attendance.status = newStatus;
+                    loadTodayAttendance();
+                    loadAllAttendance();
+                    updateAdminDashboardStats();
+                    saveDataToStorage();
+                    showNotification('Attendance updated successfully!');
+                }
+            }
+        }
+        
+        // Delete attendance function
+        function deleteAttendance(attendanceId) {
+            if (confirm('Are you sure you want to delete this attendance record?')) {
+                const index = sampleAttendance.findIndex(a => a.id === attendanceId);
+                if (index !== -1) {
+                    sampleAttendance.splice(index, 1);
+                    loadTodayAttendance();
+                    loadAllAttendance();
+                    updateAdminDashboardStats();
+                    saveDataToStorage();
+                    showNotification('Attendance record deleted successfully!');
+                }
+            }
+        }
+        
+        // ... (keep all other functions exactly as they were) ...
+
+        // Initialize charts
+        function initializeCharts() {
+            // Teacher attendance chart
+            const teacherCtx = document.getElementById('attendanceChart');
+            if (teacherCtx) {
+                new Chart(teacherCtx.getContext('2d'), {
+                    type: 'bar',
+                    data: {
+                        labels: ['Week 1', 'Week 2', 'Week 3', 'Week 4'],
+                        datasets: [{
+                            label: 'Present',
+                            data: [5, 4, 5, 4],
+                            backgroundColor: 'rgba(46, 204, 113, 0.7)'
+                        }, {
+                            label: 'Late',
+                            data: [0, 1, 0, 1],
+                            backgroundColor: 'rgba(243, 156, 18, 0.7)'
+                        }, {
+                            label: 'Absent',
+                            data: [0, 0, 0, 1],
+                            backgroundColor: 'rgba(231, 76, 60, 0.7)'
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                max: 5
+                            }
+                        }
+                    }
+                });
+            }
+            
+            // Admin attendance chart
+            const adminCtx = document.getElementById('adminAttendanceChart');
+            if (adminCtx) {
+                new Chart(adminCtx.getContext('2d'), {
+                    type: 'doughnut',
+                    data: {
+                        labels: ['Present', 'Late', 'Absent'],
+                        datasets: [{
+                            data: [38, 5, 4],
+                            backgroundColor: [
+                                'rgba(46, 204, 113, 0.7)',
+                                'rgba(243, 156, 18, 0.7)',
+                                'rgba(231, 76, 60, 0.7)'
+                            ]
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false
+                    }
+                });
+            }
+            
+            // Reports chart
+            const reportCtx = document.getElementById('reportChart');
+            if (reportCtx) {
+                new Chart(reportCtx.getContext('2d'), {
+                    type: 'line',
+                    data: {
+                        labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
+                        datasets: [{
+                            label: 'Attendance Rate (%)',
+                            data: [92, 88, 95, 90, 87, 93],
+                            borderColor: 'rgba(52, 152, 219, 1)',
+                            backgroundColor: 'rgba(52, 152, 219, 0.1)',
+                            fill: true
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        scales: {
+                            y: {
+                                beginAtZero: false,
+                                min: 80,
+                                max: 100
+                            }
+                        }
+                    }
+                });
+            }
+        }
+    </script>
+</body>
+</html>
